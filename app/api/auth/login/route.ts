@@ -16,5 +16,10 @@ export async function POST(request: Request) {
     if (!env.SESSION_SECRET) return NextResponse.json({ message: "Authentication is not configured." }, { status: 503 });
     await createSession();
     return NextResponse.json({ ok: true });
-  } catch { return NextResponse.json({ message: "Unable to sign in." }, { status: 400 }); }
+  } catch (error) {
+    if (error instanceof z.ZodError) return NextResponse.json({ message: "Enter your administrator password." }, { status: 400 });
+    if (error instanceof Error && error.message === "FORBIDDEN_ORIGIN") return NextResponse.json({ message: "Invalid request origin." }, { status: 403 });
+    console.error("Administrator login failed", error instanceof Error ? error.message : "Unknown error");
+    return NextResponse.json({ message: "Unable to sign in. Check the deployment authentication configuration." }, { status: 503 });
+  }
 }

@@ -11,8 +11,10 @@ export function redisConfigured() { return Boolean(redis); }
 export async function enforceOrigin() {
   const headerList = await headers();
   const origin = headerList.get("origin");
-  const host = headerList.get("host");
-  if (origin && host && new URL(origin).host !== host) throw new Error("FORBIDDEN_ORIGIN");
+  const host = headerList.get("x-forwarded-host")?.split(",")[0].trim() || headerList.get("host");
+  if (!origin || !host) return;
+  const originUrl = new URL(origin);
+  if (originUrl.host !== host) throw new Error("FORBIDDEN_ORIGIN");
 }
 
 export async function checkRateLimit(key: string, limit: number, windowSeconds: number) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const protectedPaths = ["/dashboard", "/compose", "/sent", "/templates", "/settings"];
+const protectedPaths = ["/dashboard", "/compose", "/sent", "/inbox", "/templates", "/settings"];
 
 export function middleware(request: NextRequest) {
   const isProtected = protectedPaths.some((path) => request.nextUrl.pathname.startsWith(path));
@@ -11,4 +11,4 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/dashboard/:path*", "/compose/:path*", "/sent/:path*", "/templates/:path*", "/settings/:path*"] };
+export const config = { matcher: ["/dashboard/:path*", "/compose/:path*", "/sent/:path*", "/inbox/:path*", "/templates/:path*", "/settings/:path*"] };

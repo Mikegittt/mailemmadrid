@@ -54,6 +54,9 @@ async function updateLocalEmails(update: (records: EmailRecord[]) => EmailRecord
 }
 
 export function databaseConfigured() { return Boolean(client); }
+function isMissingTableError(error: unknown) {
+  return error instanceof Object && "code" in error && (error as { code?: string }).code === "PGRST205";
+}
 export async function insertEmail(record: Omit<EmailRecord, "id" | "created_at">) {
   const completeRecord = { ...record, direction: record.direction || "sent" as EmailDirection, id: crypto.randomUUID(), created_at: new Date().toISOString() };
   if (!client) {
@@ -69,13 +72,27 @@ export async function insertEmail(record: Omit<EmailRecord, "id" | "created_at">
 export async function listEmails(direction: EmailDirection = "sent") {
   if (!client) return (await readLocalEmails()).filter((item) => item.direction === direction);
   const { data, error } = await client.from("email_records").select("*").eq("direction", direction).order("created_at", { ascending: false });
-  if (error) throw error; return data as EmailRecord[];
+  if (error) {
+    if (isMissingTableError(error)) {
+      console.error("Email history is unavailable because the email_records table is not configured.");
+      return [];
+    }
+    throw error;
+  }
+  return data as EmailRecord[];
 }
 export async function listReceivedEmails() { return listEmails("received"); }
 export async function listTemplates() {
   if (!client) return starterTemplates;
   const { data, error } = await client.from("email_templates").select("*").order("updated_at", { ascending: false });
-  if (error) throw error; return data as Template[];
+  if (error) {
+    if (isMissingTableError(error)) {
+      console.error("Templates are unavailable because the email_templates table is not configured.");
+      return starterTemplates;
+    }
+    throw error;
+  }
+  return data as Template[];
 }
 export async function saveTemplate(template: { id?: string; name: string; subject: string; html: string; text: string }) {
   if (!client) return { ...template, id: template.id || crypto.randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Template;
