@@ -11,6 +11,9 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   SUPABASE_SERVICE_ROLE_KEY: optionalString,
   RESEND_WEBHOOK_SECRET: optionalString,
+  EMAIL_FORWARD_TO: z.preprocess((value) => value === "" ? undefined : value, z.string().email().optional()),
+  EMAIL_FORWARD_FROM: z.preprocess((value) => value === "" ? undefined : value, z.string().email().optional()),
+  EMAIL_FORWARD_ENABLED: z.preprocess((value) => value === "" ? undefined : value, z.enum(["true", "false"]).optional()),
 });
 
 export const env = envSchema.parse({
@@ -23,4 +26,7 @@ export const env = envSchema.parse({
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
+  EMAIL_FORWARD_TO: process.env.EMAIL_FORWARD_TO,
+  EMAIL_FORWARD_FROM: process.env.EMAIL_FORWARD_FROM,
+  EMAIL_FORWARD_ENABLED: process.env.EMAIL_FORWARD_ENABLED,
 });

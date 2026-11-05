@@ -24,3 +24,41 @@ export async function getReceivedEmail(id: string) {
   if (result.error) throw new Error(result.error.message);
   return result.data;
 }
+
+export async function listReceivedAttachments(emailId: string) {
+  const result = await getResend().emails.receiving.attachments.list({ emailId });
+  if (result.error) throw new Error(result.error.message);
+  return result.data.data;
+}
+
+export async function getReceivedAttachment(emailId: string, attachmentId: string) {
+  const result = await getResend().emails.receiving.attachments.get({ emailId, id: attachmentId });
+  if (result.error) throw new Error(result.error.message);
+  return result.data;
+}
+
+export function verifyResendWebhook(payload: string, headers: { id: string; timestamp: string; signature: string }) {
+  if (!env.RESEND_WEBHOOK_SECRET) throw new Error("RESEND_WEBHOOK_SECRET is not configured");
+  return getResend().webhooks.verify({ payload, headers, webhookSecret: env.RESEND_WEBHOOK_SECRET });
+}
+
+export async function forwardReceivedEmail(input: {
+  to: string;
+  from: string;
+  subject: string;
+  html: string;
+  text: string;
+  attachments: Array<{ filename: string; content: Buffer; contentType?: string }>;
+}) {
+  const result = await getResend().emails.send({
+    from: input.from,
+    to: [input.to],
+    subject: input.subject,
+    html: input.html,
+    text: input.text,
+    attachments: input.attachments,
+  });
+  if (result.error) throw new Error(result.error.message);
+  if (!result.data?.id) throw new Error("Resend did not return a forwarding email ID");
+  return result.data;
+}

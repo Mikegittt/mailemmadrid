@@ -15,7 +15,11 @@ export async function POST(request: Request) {
     if (!env.ADMIN_PASSWORD || body.password !== env.ADMIN_PASSWORD) return NextResponse.json({ message: "Invalid administrator password." }, { status: 401 });
     if (!env.SESSION_SECRET) return NextResponse.json({ message: "Authentication is not configured." }, { status: 503 });
     await createSession();
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, {
+      headers: {
+        "cache-control": "no-store, private",
+      },
+    });
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ message: "Enter your administrator password." }, { status: 400 });
     if (error instanceof Error && error.message === "FORBIDDEN_ORIGIN") return NextResponse.json({ message: "Invalid request origin." }, { status: 403 });

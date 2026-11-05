@@ -16,8 +16,13 @@ export async function POST(request: Request) {
     const input = emailSchema.parse(await request.json());
     const result = await sendEmail(input);
     if (!result?.id) throw new Error("Resend did not return an email ID");
-    const record = await insertEmail({ direction: "sent", resend_id: result.id, to: input.to, subject: input.subject, from: env.RESEND_FROM_EMAIL || "configured sender", status: "accepted", html: input.html, text: input.text });
-    return NextResponse.json({ ok: true, id: result.id, record });
+    let record;
+    try {
+      record = await insertEmail({ direction: "sent", resend_id: result.id, to: input.to, subject: input.subject, from: env.RESEND_FROM_EMAIL || "configured sender", status: "accepted", html: input.html, text: input.text });
+    } catch (error) {
+      console.error("Email accepted by Resend but history persistence failed", error instanceof Error ? error.message : "unknown error");
+    }
+    return NextResponse.json({ ok: true, id: result.id, record, historySaved: Boolean(record) });
   } catch (error) {
     if (error instanceof Error) console.error("Email send failed", error.message);
     if (error instanceof Error && error.message === "UNAUTHORIZED") return NextResponse.json({ message: "Unauthorized." }, { status: 401 });

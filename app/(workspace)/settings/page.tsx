@@ -1,6 +1,32 @@
 import { env } from "@/lib/env";
-import { databaseConfigured } from "@/lib/database";
+import { databaseConfigured, getForwardingSettings } from "@/lib/database";
+import { ForwardingSettingsCard } from "@/components/forwarding-settings";
 import { redisConfigured } from "@/lib/security";
 import { CheckCircle2, CircleAlert } from "lucide-react";
-function Check({ ok, label, detail }: { ok: boolean; label: string; detail: string }) { return <div className="flex items-start gap-3 rounded-xl border border-slate-200 p-4"><span className={ok ? "text-emerald-500" : "text-amber-500"}>{ok ? <CheckCircle2 size={20} /> : <CircleAlert size={20} />}</span><div><p className="font-medium">{label}</p><p className="mt-1 text-sm text-slate-500">{detail}</p></div></div>; }
-export default function SettingsPage() { return <div className="mx-auto max-w-4xl"><p className="text-sm font-medium text-blue-600">Settings</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Workspace configuration</h1><p className="mt-2 text-slate-500">Operational status without exposing secrets.</p><div className="mt-8 space-y-4"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="font-semibold">Service status</h2><div className="mt-5 space-y-3"><Check ok={Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL)} label="Resend integration" detail={env.RESEND_API_KEY ? "API key configured. Sender identity is configured server-side." : "Configure RESEND_API_KEY and RESEND_FROM_EMAIL."} /><Check ok={Boolean(env.ADMIN_PASSWORD && env.SESSION_SECRET)} label="Administrator authentication" detail="Signed, HTTP-only sessions expire after 8 hours." /><Check ok={databaseConfigured()} label="Persistent email history" detail={databaseConfigured() ? "Supabase PostgreSQL is connected." : "Configure Supabase to persist history across deployments."} /><Check ok={redisConfigured()} label="Persistent rate limiting" detail={redisConfigured() ? "Upstash Redis is active." : "Upstash is not configured; rate limits are not persistent across instances."} /><Check ok={Boolean(env.RESEND_WEBHOOK_SECRET)} label="Delivery webhooks" detail={env.RESEND_WEBHOOK_SECRET ? "Webhook secret configured." : "Configure the Resend webhook signing secret to track delivery."} /></div></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="font-semibold">Sender identity</h2><p className="mt-3 rounded-xl bg-slate-50 p-4 font-mono text-sm text-slate-600">{env.RESEND_FROM_EMAIL || "Not configured"}</p><p className="mt-3 text-xs text-slate-500">The API key is never displayed. Outbound messages cannot override this identity.</p></div></div></div>; }
+
+export const dynamic = "force-dynamic";
+
+function Check({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
+  return <div className="flex items-start gap-3 rounded-xl border border-slate-200 p-4">
+    <span className={ok ? "text-emerald-500" : "text-amber-500"}>{ok ? <CheckCircle2 size={20} /> : <CircleAlert size={20} />}</span>
+    <div><p className="font-medium">{label}</p><p className="mt-1 text-sm text-slate-500">{detail}</p></div>
+  </div>;
+}
+
+export default async function SettingsPage() {
+  const forwarding = await getForwardingSettings();
+  return <div className="mx-auto max-w-4xl">
+    <p className="text-sm font-medium text-blue-600">Settings</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Workspace configuration</h1><p className="mt-2 text-slate-500">Operational status without exposing secrets.</p>
+    <div className="mt-8 space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="font-semibold">Service status</h2><div className="mt-5 space-y-3">
+        <Check ok={Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL)} label="Resend integration" detail={env.RESEND_API_KEY ? "API key configured. Sender identity is configured server-side." : "Configure RESEND_API_KEY and RESEND_FROM_EMAIL."} />
+        <Check ok={Boolean(env.ADMIN_PASSWORD && env.SESSION_SECRET)} label="Administrator authentication" detail="Signed, HTTP-only sessions expire after 8 hours." />
+        <Check ok={databaseConfigured()} label="Persistent email history" detail={databaseConfigured() ? "Supabase PostgreSQL is connected." : "Configure Supabase to persist history across deployments."} />
+        <Check ok={redisConfigured()} label="Persistent rate limiting" detail={redisConfigured() ? "Upstash Redis is active." : "Upstash is not configured; rate limits are not persistent across instances."} />
+        <Check ok={Boolean(env.RESEND_WEBHOOK_SECRET)} label="Delivery webhooks" detail={env.RESEND_WEBHOOK_SECRET ? "Webhook secret configured." : "Configure the Resend webhook signing secret to track delivery."} />
+      </div></div>
+      <ForwardingSettingsCard initial={forwarding} />
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="font-semibold">Sender identity</h2><p className="mt-3 rounded-xl bg-slate-50 p-4 font-mono text-sm text-slate-600">{env.RESEND_FROM_EMAIL || "Not configured"}</p><p className="mt-3 text-xs text-slate-500">The API key is never displayed. Outbound messages cannot override this identity.</p></div>
+    </div>
+  </div>;
+}

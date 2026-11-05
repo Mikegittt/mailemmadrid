@@ -8,6 +8,8 @@ export type EmailStatus = "accepted" | "delivered" | "bounced" | "failed" | "com
 export type EmailDirection = "sent" | "received";
 export type EmailRecord = { id: string; resend_id: string; direction: EmailDirection; to: string[]; subject: string; from: string; status: EmailStatus; created_at: string; html?: string; text?: string };
 export type Template = { id: string; name: string; subject: string; html: string; text: string; created_at: string; updated_at: string };
+export type ForwardingSettings = { enabled: boolean; source: string; destination: string; status: "ready" | "disabled" | "not_configured"; last_forwarded_at: string | null };
+export type ForwardingEvent = { email_id: string; event_id: string; status: "processing" | "forwarded" | "failed"; forwarded_id: string | null; error: string | null; updated_at: string };
 
 const client = process.env.NODE_ENV === "production"
   && env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY
@@ -24,6 +26,7 @@ const starterTemplates: Template[] = [
 ];
 
 const localStorePath = path.join(process.cwd(), ".data", "email-records.json");
+const localForwardingPath = path.join(process.cwd(), ".data", "forwarding.json");
 let localWriteQueue = Promise.resolve();
 
 async function readLocalEmails(): Promise<EmailRecord[]> {
@@ -52,8 +55,64 @@ async function updateLocalEmails(update: (records: EmailRecord[]) => EmailRecord
   await localWriteQueue;
   return result;
 }
+async function readLocalForwarding(): Promise<{ settings?: ForwardingSettings; events: ForwardingEvent[] }> {
+  try { return JSON.parse(await readFile(localForwardingPath, "utf8")) as { settings?: ForwardingSettings; events: ForwardingEvent[] }; }
+  catch (error) { if (error instanceof Error && "code" in error && error.code === "ENOENT") return { events: [] }; throw error; }
+}
+async function writeLocalForwarding(value: { settings?: ForwardingSettings; events: ForwardingEvent[] }) {
+  await mkdir(path.dirname(localForwardingPath), { recursive: true });
+  const temporaryPath = `${localForwardingPath}.tmp`;
+  await writeFile(temporaryPath, JSON.stringify(value, null, 2), "utf8");
+  await rename(temporaryPath, localForwardingPath);
+}
 
 export function databaseConfigured() { return Boolean(client); }
+export async function getForwardingSettings(): Promise<ForwardingSettings> {
+  const fallback: ForwardingSettings = {
+    enabled: env.EMAIL_FORWARD_ENABLED === "true",
+    source: env.EMAIL_FORWARD_FROM || "",
+    destination: env.EMAIL_FORWARD_TO || "",
+    status: env.EMAIL_FORWARD_FROM && env.EMAIL_FORWARD_TO ? (env.EMAIL_FORWARD_ENABLED === "false" ? "disabled" : "ready") : "not_configured",
+    last_forwarded_at: null,
+  };
+  if (!client) return { ...fallback, ...(await readLocalForwarding()).settings };
+  const { data, error } = await client.from("forwarding_settings").select("*").eq("id", "default").maybeSingle();
+  if (error) { if (isMissingTableError(error)) return fallback; throw error; }
+  return data ? { ...fallback, ...data } as ForwardingSettings : fallback;
+}
+export async function setForwardingEnabled(enabled: boolean) {
+  const settings: ForwardingSettings = { ...(await getForwardingSettings()), enabled, status: enabled ? "ready" : "disabled" };
+  if (!client) { const state = await readLocalForwarding(); await writeLocalForwarding({ ...state, settings }); return settings; }
+  const { data, error } = await client.from("forwarding_settings").upsert({ id: "default", enabled, source: settings.source, destination: settings.destination, status: settings.status, last_forwarded_at: settings.last_forwarded_at }).select().single();
+  if (error) throw error; return data as ForwardingSettings;
+}
+export async function claimForwardingEvent(emailId: string, eventId: string) {
+  if (!client) {
+    const state = await readLocalForwarding();
+    const existing = state.events.find((event) => event.email_id === emailId);
+    if (existing) return existing;
+    const event: ForwardingEvent = { email_id: emailId, event_id: eventId, status: "processing", forwarded_id: null, error: null, updated_at: new Date().toISOString() };
+    await writeLocalForwarding({ ...state, events: [event, ...state.events] });
+    return event;
+  }
+  const { data, error } = await client.from("email_forwarding_events").insert({ email_id: emailId, event_id: eventId, status: "processing" }).select().single();
+  if (!error) return data as ForwardingEvent;
+  if (error.code !== "23505") throw error;
+  const existing = await client.from("email_forwarding_events").select("*").eq("email_id", emailId).single();
+  if (existing.error) throw existing.error;
+  return existing.data as ForwardingEvent;
+}
+export async function completeForwardingEvent(emailId: string, status: ForwardingEvent["status"], forwardedId: string | null, errorMessage: string | null) {
+  const updatedAt = new Date().toISOString();
+  if (!client) {
+    const state = await readLocalForwarding();
+    await writeLocalForwarding({ ...state, events: state.events.map((event) => event.email_id === emailId ? { ...event, status, forwarded_id: forwardedId, error: errorMessage, updated_at: updatedAt } : event), settings: status === "forwarded" && state.settings ? { ...state.settings, last_forwarded_at: updatedAt } : state.settings });
+    return;
+  }
+  const { error } = await client.from("email_forwarding_events").update({ status, forwarded_id: forwardedId, error: errorMessage, updated_at: updatedAt }).eq("email_id", emailId);
+  if (error) throw error;
+  if (status === "forwarded") await client.from("forwarding_settings").upsert({ id: "default", enabled: true, source: env.EMAIL_FORWARD_FROM || "", destination: env.EMAIL_FORWARD_TO || "", status: "ready", last_forwarded_at: updatedAt });
+}
 function isMissingTableError(error: unknown) {
   return error instanceof Object && "code" in error && (error as { code?: string }).code === "PGRST205";
 }
@@ -67,7 +126,14 @@ export async function insertEmail(record: Omit<EmailRecord, "id" | "created_at">
     return records.find((item) => item.resend_id === record.resend_id) || completeRecord;
   }
   const { data, error } = await client.from("email_records").upsert(completeRecord, { onConflict: "resend_id" }).select().single();
-  if (error) throw error; return data as EmailRecord;
+  if (error) {
+    if (isMissingTableError(error)) {
+      console.error("Email history is unavailable because the email_records table is not configured.");
+      return completeRecord;
+    }
+    throw error;
+  }
+  return data as EmailRecord;
 }
 export async function listEmails(direction: EmailDirection = "sent") {
   if (!client) return (await readLocalEmails()).filter((item) => item.direction === direction);

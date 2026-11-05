@@ -57,7 +57,7 @@ export function EmailComposer({ initial }: { initial?: { subject: string; html: 
     const response = await fetch("/api/emails/send", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
     const data = await response.json();
     setBusy(false);
-    setMessage(response.ok ? `Accepted by Resend. Email ID: ${data.id}` : data.message || "Unable to send email.");
+    setMessage(response.ok ? `Accepted by Resend. Email ID: ${data.id}${data.historySaved === false ? " History could not be saved; configure Supabase tables." : ""}` : data.message || "Unable to send email.");
     if (response.ok) { setAttachments([]); setValues({ ...values, to: "", cc: "", bcc: "" }); }
   }
 
