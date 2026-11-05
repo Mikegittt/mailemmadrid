@@ -1,0 +1,182 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install Tailwind dependencies",
+			"type": "shell",
+			"command": "npm install",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Build Next.js application",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "Sync Tailwind packages",
+			"type": "shell",
+			"command": "npm install --save-dev tailwindcss@^4.1.16 @tailwindcss/postcss@^4.1.16 postcss@^8.5.6",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Install project dependencies",
+			"type": "shell",
+			"command": "npm install",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start Next.js development server",
+			"type": "shell",
+			"command": "npm run dev",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Repair installed packages",
+			"type": "shell",
+			"command": "npm install --force",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Refresh PostCSS package",
+			"type": "shell",
+			"command": "npm install --save-dev postcss@8.4.31 --force",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Install updated Next.js",
+			"type": "shell",
+			"command": "npm install",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start refreshed dev server",
+			"type": "shell",
+			"command": "npm run dev -- -p 3001",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Restart development server",
+			"type": "shell",
+			"command": "npm run dev -- -p 3002",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start clean dev server",
+			"type": "shell",
+			"command": "npm run dev -- -p 3003",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Refresh local session secret",
+			"type": "shell",
+			"command": "node -e \"const fs=require('fs');const crypto=require('crypto');const p='.env';let s=fs.readFileSync(p,'utf8');s=s.replace(/^SESSION_SECRET=.*$/m,'SESSION_SECRET='+crypto.randomBytes(32).toString('hex'));fs.writeFileSync(p,s);\"",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run secret refresh script",
+			"type": "shell",
+			"command": "node scripts/refresh-session-secret.cjs",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run clean mail center server",
+			"type": "shell",
+			"command": "npm run dev -- -p 3004",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Stop stale Next server",
+			"type": "shell",
+			"command": "Stop-Process -Id 8544 -Force",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start corrected mail server",
+			"type": "shell",
+			"command": "npm run dev -- -p 3001",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check Next server processes",
+			"type": "shell",
+			"command": "Get-Process node -ErrorAction SilentlyContinue | Select-Object Id,Path",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Inspect Next process commands",
+			"type": "shell",
+			"command": "Get-CimInstance Win32_Process -Filter \"Name = 'node.exe'\" | Select-Object ProcessId,CommandLine",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Find port 3001 process",
+			"type": "shell",
+			"command": "Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue | Select-Object LocalPort,OwningProcess,State",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Restart active Next server",
+			"type": "shell",
+			"command": "Stop-Process -Id 13664 -Force",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start final dev server",
+			"type": "shell",
+			"command": "npm run dev -- -p 3001",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Restart final dev server",
+			"type": "shell",
+			"command": "Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force }; npm run dev -- -p 3001",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Verify mail center on port 3010",
+			"type": "shell",
+			"command": "npm run dev -- -p 3010",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Inspect port 3001 owner",
+			"type": "shell",
+			"command": "Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue | Select-Object LocalPort,OwningProcess,State",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Typecheck email fixes",
+			"type": "shell",
+			"command": "npm run typecheck",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}

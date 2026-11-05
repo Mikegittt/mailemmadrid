@@ -1,0 +1,9 @@
+"use client";
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+export default function NewTemplatePage() {
+  const router = useRouter(); const [form, setForm] = useState({ name: "", subject: "", html: "<p></p>", text: "" }); const [error, setError] = useState("");
+  function update(key: keyof typeof form, value: string) { setForm((current) => ({ ...current, [key]: value })); }
+  async function submit(event: FormEvent) { event.preventDefault(); const response = await fetch("/api/templates", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(form) }); if (!response.ok) { setError("Unable to save template."); return; } router.push("/templates"); router.refresh(); }
+  return <div className="mx-auto max-w-3xl"><p className="text-sm font-medium text-blue-600">Templates</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Create template</h1><form onSubmit={submit} className="mt-8 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><label className="block text-sm font-medium">Template name<input required value={form.name} onChange={(e) => update("name", e.target.value)} className="field mt-2" /></label><label className="block text-sm font-medium">Subject<input required value={form.subject} onChange={(e) => update("subject", e.target.value)} className="field mt-2" /></label><label className="block text-sm font-medium">HTML content<textarea required value={form.html} onChange={(e) => update("html", e.target.value)} className="field mt-2 min-h-48 font-mono text-sm" /></label><label className="block text-sm font-medium">Plain-text alternative<textarea value={form.text} onChange={(e) => update("text", e.target.value)} className="field mt-2 min-h-28" /></label>{error && <p className="text-sm text-red-600">{error}</p>}<button className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700">Save template</button></form></div>;
+}
