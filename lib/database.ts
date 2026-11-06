@@ -75,10 +75,24 @@ export async function getForwardingSettings(): Promise<ForwardingSettings> {
     status: env.EMAIL_FORWARD_FROM && env.EMAIL_FORWARD_TO ? (env.EMAIL_FORWARD_ENABLED === "false" ? "disabled" : "ready") : "not_configured",
     last_forwarded_at: null,
   };
-  if (!client) return { ...fallback, ...(await readLocalForwarding()).settings };
-  const { data, error } = await client.from("forwarding_settings").select("*").eq("id", "default").maybeSingle();
-  if (error) { if (isMissingTableError(error)) return fallback; throw error; }
-  return data ? { ...fallback, ...data } as ForwardingSettings : fallback;
+  let persisted: Partial<ForwardingSettings> | undefined;
+  if (!client) {
+    persisted = (await readLocalForwarding()).settings;
+  } else {
+    const { data, error } = await client.from("forwarding_settings").select("*").eq("id", "default").maybeSingle();
+    if (error) { if (isMissingTableError(error)) return fallback; throw error; }
+    persisted = data as Partial<ForwardingSettings> | undefined;
+  }
+  const settings = {
+    ...fallback,
+    ...persisted,
+    source: env.EMAIL_FORWARD_FROM || persisted?.source || "",
+    destination: env.EMAIL_FORWARD_TO || persisted?.destination || "",
+  };
+  settings.status = !settings.source || !settings.destination
+    ? "not_configured"
+    : settings.enabled ? "ready" : "disabled";
+  return settings;
 }
 export async function setForwardingEnabled(enabled: boolean) {
   const settings: ForwardingSettings = { ...(await getForwardingSettings()), enabled, status: enabled ? "ready" : "disabled" };
